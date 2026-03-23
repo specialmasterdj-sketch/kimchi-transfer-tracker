@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1565C0">
+<title>Kimchi Mart Transfer Tracker</title>
+<link rel="manifest" href="manifest.json">
+<style>
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f5f5f5; color: #333; min-height: 100vh;
+  max-width: 800px; margin: 0 auto;
+}
+
+/* ===== HEADER ===== */
+.header {
+  background: linear-gradient(135deg, #1565C0, #0D47A1);
+  color: white; padding: 14px 16px; position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 10px;
+}
+.header h1 { font-size: 1rem; font-weight: 700; line-height: 1.3; flex: 1; }
+.header .subtitle { font-size: 0.7rem; opacity: 0.85; margin-top: 2px; }
+.back-btn {
+  background: rgba(255,255,255,0.2); border: none; color: white;
+  width: 34px; height: 34px; border-radius: 50%; font-size: 1.1rem;
+  cursor: pointer; display: none; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.back-btn.visible { display: flex; }
+
+/* ===== PAGES ===== */
+.page { display: none; padding: 14px; }
+.page.active { display: block; }
+
+/* ===== STAT GRID ===== */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.stat-grid.three { grid-template-columns: repeat(3, 1fr); }
+.stat-grid.four { grid-template-columns: repeat(4, 1fr); }
+.stat-card { background: white; border-radius: 10px; padding: 12px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.stat-number { font-size: 1.4rem; font-weight: 800; line-height: 1; }
+.stat-label { font-size: 0.6rem; color: #666; margin-top: 3px; text-transform: uppercase; }
+.stat-number.red { color: #F44336; }
+.stat-number.green { color: #4CAF50; }
+.stat-number.blue { color: #1565C0; }
+.stat-number.orange { color: #FF9800; }
+.stat-number.purple { color: #9C27B0; }
+
+/* ===== BRANCH GRID ===== */
+.branch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.branch-card {
+  background: white; border-radius: 12px; padding: 16px 12px; text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08); cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s; border-left: 5px solid #ccc;
+  -webkit-tap-highlight-color: transparent;
+}
+.branch-card:active { transform: scale(0.97); }
+.branch-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+.branch-card .branch-name { font-size: 0.95rem; font-weight: 700; }
+.branch-card .branch-stats { font-size: 0.65rem; color: #888; margin-top: 6px; }
+.branch-card .alert-badge {
+  display: inline-block; background: #F44336; color: white; font-size: 0.6rem;
+  padding: 2px 8px; border-radius: 10px; margin-top: 6px; font-weight: 600;
+}
+
+/* ===== CARDS ===== */
+.card { background: white; border-radius: 12px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.card-title { font-size: 0.9rem; font-weight: 700; color: #333; margin-bottom: 6px; }
+.card-subtitle { font-size: 0.7rem; color: #888; margin-bottom: 10px; }
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 12px 20px; border: none; border-radius: 10px; font-size: 0.9rem;
+  font-weight: 600; cursor: pointer; width: 100%; transition: transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: #1565C0; color: white; }
+.btn-primary:disabled { background: #ccc; cursor: default; }
+.btn-success { background: #4CAF50; color: white; }
+.btn-danger { background: #F44336; color: white; }
+.btn-warning { background: #FF9800; color: white; }
+.btn-secondary { background: #e0e0e0; color: #333; }
+.btn-sm { padding: 7px 14px; font-size: 0.75rem; width: auto; border-radius: 8px; }
+.btn-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+
+/* ===== FORM ELEMENTS ===== */
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 0.75rem; font-weight: 600; color: #555; margin-bottom: 5px; }
+.form-select, .form-input {
+  width: 100%; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 10px;
+  font-size: 0.85rem; background: white; -webkit-appearance: none; appearance: none;
+}
+.form-select:focus, .form-input:focus { border-color: #1565C0; outline: none; }
+textarea.form-input { resize: vertical; min-height: 60px; }
+
+/* ===== TRANSFER LIST ===== */
+.transfer-item {
+  background: white; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-left: 5px solid #ccc;
+}
+.transfer-item.status-requested { border-left-color: #FF9800; }
+.transfer-item.status-in-transit { border-left-color: #2196F3; }
+.transfer-item.status-delivered { border-left-color: #4CAF50; }
+.transfer-item .transfer-route {
+  font-size: 0.85rem; font-weight: 700; margin-bottom: 4px;
+}
+.transfer-item .transfer-route .arrow { color: #1565C0; margin: 0 6px; }
+.transfer-item .transfer-items-summary { font-size: 0.75rem; color: #555; margin-bottom: 4px; }
+.transfer-item .transfer-meta { font-size: 0.65rem; color: #999; display: flex; justify-content: space-between; align-items: center; }
+.transfer-status-badge {
+  display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.6rem;
+  font-weight: 700; text-transform: uppercase; color: white;
+}
+.badge-requested { background: #FF9800; }
+.badge-in-transit { background: #2196F3; }
+.badge-delivered { background: #4CAF50; }
+
+/* ===== ALERT ITEMS ===== */
+.alert-item {
+  background: white; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 10px;
+}
+.alert-item .alert-icon {
+  width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 1rem; flex-shrink: 0; color: white;
+}
+.alert-icon.surplus { background: #4CAF50; }
+.alert-icon.shortage { background: #F44336; }
+.alert-item .alert-info { flex: 1; }
+.alert-item .alert-product { font-size: 0.8rem; font-weight: 600; }
+.alert-item .alert-detail { font-size: 0.65rem; color: #888; }
+.alert-item .alert-qty { font-size: 0.85rem; font-weight: 700; text-align: right; }
+.alert-qty.surplus-qty { color: #4CAF50; }
+.alert-qty.shortage-qty { color: #F44336; }
+
+/* ===== NOTIFICATION BELL ===== */
+.notif-btn {
+  background: rgba(255,255,255,0.2); border: none; color: white;
+  width: 34px; height: 34px; border-radius: 50%; font-size: 1.1rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  position: relative; flex-shrink: 0;
+}
+.notif-btn .notif-count {
+  position: absolute; top: -2px; right: -2px; background: #F44336; color: white;
+  font-size: 0.55rem; font-weight: 700; width: 16px; height: 16px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ===== TABS ===== */
+.tabs { display: flex; gap: 4px; margin-bottom: 14px; background: #e0e0e0; border-radius: 10px; padding: 3px; }
+.tab {
+  flex: 1; padding: 8px; text-align: center; border-radius: 8px; font-size: 0.7rem;
+  font-weight: 600; cursor: pointer; transition: background 0.2s; color: #666;
+  border: none; background: transparent;
+}
+.tab.active { background: white; color: #1565C0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 800px; background: white; display: flex;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.nav-item {
+  flex: 1; padding: 8px 4px; text-align: center; cursor: pointer;
+  color: #999; transition: color 0.2s; border: none; background: none;
+}
+.nav-item.active { color: #1565C0; }
+.nav-item .nav-icon { font-size: 1.2rem; display: block; }
+.nav-item .nav-label { font-size: 0.6rem; margin-top: 2px; display: block; }
+body { padding-bottom: 65px; }
+
+/* ===== ITEM ROW IN TRANSFER FORM ===== */
+.item-row {
+  display: flex; align-items: center; gap: 8px; padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.item-row .item-name { flex: 1; font-size: 0.8rem; font-weight: 500; }
+.item-row .item-qty-control {
+  display: flex; align-items: center; gap: 4px;
+}
+.qty-btn {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid #1565C0;
+  background: white; color: #1565C0; font-size: 1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-weight: 700;
+}
+.qty-btn:active { background: #1565C0; color: white; }
+.qty-input {
+  width: 45px; text-align: center; border: 2px solid #e0e0e0; border-radius: 8px;
+  padding: 4px; font-size: 0.85rem; font-weight: 600;
+}
+.item-row .item-remove {
+  width: 24px; height: 24px; border-radius: 50%; border: none; background: #ffebee;
+  color: #F44336; font-size: 0.8rem; cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+}
+
+/* ===== SEARCH ===== */
+.search-box {
+  width: 100%; padding: 10px 12px 10px 36px; border: 2px solid #e0e0e0;
+  border-radius: 10px; font-size: 0.85rem; background: white;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: 10px center;
+}
+.search-box:focus { border-color: #1565C0; outline: none; }
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+  text-align: center; padding: 40px 20px; color: #999;
+}
+.empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+.empty-state .empty-text { font-size: 0.85rem; }
+
+/* ===== MODAL ===== */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 200; display: none;
+  align-items: flex-end; justify-content: center;
+}
+.modal-overlay.visible { display: flex; }
+.modal {
+  background: white; border-radius: 16px 16px 0 0; width: 100%; max-width: 800px;
+  max-height: 85vh; overflow-y: auto; padding: 20px 16px; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0));
+}
+.modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 14px; }
+
+/* ===== SECTION TITLE ===== */
+.section-title {
+  font-size: 0.8rem; font-weight: 700; color: #333; margin-bottom: 8px;
+  margin-top: 14px; display: flex; align-items: center; justify-content: space-between;
+}
+
+/* ===== FILTER CHIPS ===== */
+.filter-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.chip {
+  padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600;
+  cursor: pointer; border: 2px solid #e0e0e0; background: white; color: #666;
+  transition: all 0.2s;
+}
+.chip.active { border-color: #1565C0; background: #E3F2FD; color: #1565C0; }
+
+/* ===== TIMELINE ===== */
+.timeline-item { display: flex; gap: 10px; padding: 8px 0; }
+.timeline-dot {
+  width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; flex-shrink: 0;
+}
+.timeline-dot.done { background: #4CAF50; }
+.timeline-dot.active { background: #2196F3; }
+.timeline-dot.pending { background: #e0e0e0; }
+.timeline-info { flex: 1; }
+.timeline-info .tl-title { font-size: 0.8rem; font-weight: 600; }
+.timeline-info .tl-time { font-size: 0.65rem; color: #999; }
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+  <button class="back-btn" id="backBtn" onclick="goBack()">&#8592;</button>
+  <div>
+    <h1 id="headerTitle">Kimchi Mart Transfer Tracker</h1>
+    <div class="subtitle" id="headerSub">Inventory Transfer Management</div>
+  </div>
+  <button class="notif-btn" onclick="showPage('notifications')">
+    &#128276;
+    <span class="notif-count" id="notifCount">0</span>
+  </button>
+</div>
+
+<!-- ===== PAGE: DASHBOARD ===== -->
+<div class="page active" id="page-dashboard">
+  <div class="stat-grid four" id="dashStats"></div>
+  <div class="section-title">Branches</div>
+  <div class="branch-grid" id="branchGrid"></div>
+
+  <div class="section-title">
+    Recent Transfers
+    <button class="btn btn-sm btn-primary" onclick="showPage('transfers')">View All</button>
+  </div>
+  <div id="recentTransfers"></div>
+
+  <div class="section-title" style="margin-top:18px">
+    Active Alerts
+    <button class="btn btn-sm btn-danger" onclick="showPage('notifications')">View All</button>
+  </div>
+  <div id="dashAlerts"></div>
+</div>
+
+<!-- ===== PAGE: BRANCH DETAIL ===== -->
+<div class="page" id="page-branch">
+  <div class="stat-grid three" id="branchStats"></div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchBranchTab('surplus', this)">Surplus</button>
+    <button class="tab" onclick="switchBranchTab('shortage', this)">Shortage</button>
+    <button class="tab" onclick="switchBranchTab('history', this)">History</button>
+  </div>
+
+  <div id="branchTabContent"></div>
+
+  <div style="display:flex;gap:8px;margin-top:14px">
+    <button class="btn btn-success" onclick="openLogItemModal('surplus')" style="flex:1">+ Log Surplus</button>
+    <button class="btn btn-danger" onclick="openLogItemModal('shortage')" style="flex:1">+ Log Shortage</button>
+  </div>
+</div>
+
+<!-- ===== PAGE: TRANSFERS ===== -->
+<div class="page" id="page-transfers">
+  <div class="tabs" style="margin-bottom:10px">
+    <button class="tab active" onclick="filterTransfers('all', this)">All</button>
+    <button class="tab" onclick="filterTransfers('requested', this)">Requested</button>
+    <button class="tab" onclick="filterTransfers('in-transit', this)">In Transit</button>
+    <button class="tab" onclick="filterTransfers('delivered', this)">Delivered</button>
+  </div>
+  <div id="transfersList"></div>
+</div>
+
+<!-- ===== PAGE: TRANSFER DETAIL ===== -->
+<div class="page" id="page-transfer-detail">
+  <div class="card" id="transferDetailCard"></div>
+  <div class="section-title">Items</div>
+  <div id="transferDetailItems"></div>
+  <div class="section-title">Timeline</div>
+  <div id="transferTimeline"></div>
+  <div id="transferActions" style="margin-top:14px"></div>
+</div>
+
+<!-- ===== PAGE: NOTIFICATIONS ===== -->
+<div class="page" id="page-notifications">
+  <div class="tabs" style="margin-bottom:10px">
+    <button class="tab active" onclick="filterNotifs('all', this)">All</button>
+    <button class="tab" onclick="filterNotifs('shortage', this)">Shortages</button>
+    <button class="tab" onclick="filterNotifs('surplus', this)">Surplus</button>
+  </div>
+  <div id="notifList"></div>
+</div>
+
+<!-- ===== PAGE: NEW TRANSFER ===== -->
+<div class="page" id="page-new-transfer">
+  <div class="card">
+    <div class="card-title">Create Transfer Request</div>
+    <div class="card-subtitle">Move items between branches</div>
+
+    <div class="form-group">
+      <label class="form-label">From Branch</label>
+      <select class="form-select" id="tfFrom"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">To Branch</label>
+      <select class="form-select" id="tfTo"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Add Items</label>
+      <input type="text" class="search-box" id="itemSearch" placeholder="Search products..." oninput="filterProductList()">
+      <div id="productPicker" style="max-height:200px;overflow-y:auto;margin-top:8px"></div>
+    </div>
+    <div class="section-title">Selected Items (<span id="selectedCount">0</span>)</div>
+    <div id="selectedItems"></div>
+    <div class="form-group" style="margin-top:10px">
+      <label class="form-label">Notes (optional)</label>
+      <textarea class="form-input" id="tfNotes" placeholder="Any special instructions..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="submitTransfer()">Create Transfer Request</button>
+  </div>
+</div>
+
+<!-- ===== MODAL: LOG SURPLUS/SHORTAGE ===== -->
+<div class="modal-overlay" id="logModal">
+  <div class="modal">
+    <div class="modal-title" id="logModalTitle">Log Item</div>
+    <div class="form-group">
+      <label class="form-label">Product</label>
+      <input type="text" class="search-box" id="logSearch" placeholder="Search products..." oninput="filterLogProducts()">
+      <div id="logProductList" style="max-height:180px;overflow-y:auto;margin-top:6px"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Quantity</label>
+      <input type="number" class="form-input" id="logQty" placeholder="Enter quantity" min="1">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes (optional)</label>
+      <textarea class="form-input" id="logNotes" placeholder="Details..."></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary" onclick="closeLogModal()" style="flex:1">Cancel</button>
+      <button class="btn btn-primary" onclick="submitLogItem()" style="flex:1">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BOTTOM NAV ===== -->
+<div class="bottom-nav">
+  <button class="nav-item active" onclick="navigate('dashboard')">
+    <span class="nav-icon">&#127968;</span>
+    <span class="nav-label">Dashboard</span>
+  </button>
+  <button class="nav-item" onclick="navigate('transfers')">
+    <span class="nav-icon">&#128666;</span>
+    <span class="nav-label">Transfers</span>
+  </button>
+  <button class="nav-item" onclick="navigate('new-transfer')">
+    <span class="nav-icon">&#10133;</span>
+    <span class="nav-label">New</span>
+  </button>
+  <button class="nav-item" onclick="navigate('notifications')">
+    <span class="nav-icon">&#128276;</span>
+    <span class="nav-label">Alerts</span>
+  </button>
+</div>
+
+<script>
+// ===== DATA STORE (localStorage) =====
+const BRANCHES = [
+  { id: 'miami', name: 'Miami', color: '#4CAF50' },
+  { id: 'pembroke', name: 'Pembroke Pines', color: '#2196F3' },
+  { id: 'hollywood', name: 'Hollywood', color: '#FF9800' },
+  { id: 'coral', name: 'Coral Springs', color: '#9C27B0' },
+  { id: 'lasolas', name: 'LASOLAS', color: '#F44336' },
+];
+
+const PRODUCTS = [
+  // Kimchi & Banchan
+  'Napa Cabbage Kimchi', 'Radish Kimchi (Kkakdugi)', 'Green Onion Kimchi', 'Cucumber Kimchi',
+  'Perilla Leaf Kimchi', 'Water Kimchi', 'Seasoned Bean Sprouts', 'Spinach Namul',
+  'Seasoned Seaweed', 'Fish Cake (Odeng)',
+  // Rice & Noodles
+  'White Rice (50lb)', 'Short Grain Rice (20lb)', 'Sweet Rice (10lb)', 'Ramen (Shin)', 'Ramen (Jin)',
+  'Japchae Noodles', 'Udon Noodles', 'Somen Noodles', 'Rice Cakes (Tteok)', 'Instant Rice',
+  // Sauces & Seasonings
+  'Gochujang (Red Pepper Paste)', 'Doenjang (Soybean Paste)', 'Gochugaru (Pepper Flakes)',
+  'Soy Sauce', 'Sesame Oil', 'Rice Vinegar', 'Mirin', 'Fish Sauce', 'Oyster Sauce', 'MSG',
+  // Frozen
+  'Frozen Dumplings (Mandu)', 'Frozen Gyoza', 'Frozen Edamame', 'Frozen Fish Fillet',
+  'Frozen Shrimp', 'Frozen Octopus', 'Frozen Squid', 'Frozen Tteokbokki', 'Frozen Hotdog',
+  'Ice Cream Mochi',
+  // Meat
+  'Beef Short Rib (Galbi)', 'Beef Bulgogi Sliced', 'Pork Belly Sliced', 'Pork Shoulder',
+  'Chicken Thigh', 'Chicken Breast', 'Beef Brisket', 'Marinated Kalbi',
+  'Marinated Bulgogi', 'Spam',
+  // Seafood
+  'Salmon Fillet', 'Tuna Sashimi Grade', 'Shrimp (Fresh)', 'Crab Meat', 'Mackerel',
+  'Yellow Croaker', 'Squid (Fresh)', 'Clams', 'Mussels', 'Seaweed (Dried)',
+  // Produce
+  'Napa Cabbage', 'Korean Radish', 'Green Onion', 'Garlic', 'Ginger', 'Tofu (Firm)',
+  'Tofu (Soft)', 'Bean Sprouts', 'Enoki Mushroom', 'King Oyster Mushroom',
+  // Drinks
+  'Soju', 'Makgeolli', 'Korean Beer (Hite)', 'Yakult', 'Banana Milk',
+  'Aloe Vera Drink', 'Barley Tea', 'Corn Tea', 'Cider (Chilsung)', 'Milkis',
+  // Snacks
+  'Shrimp Chips', 'Honey Butter Chips', 'Choco Pie', 'Pepero', 'Rice Crackers',
+  'Roasted Seaweed Snack', 'Dried Squid Snack', 'Mochi Snack', 'Pocky', 'Hi-Chew',
+  // Household & Misc
+  'Disposable Chopsticks', 'Paper Bowls', 'Plastic Wrap', 'Aluminum Foil',
+  'Sushi Rolling Mat', 'Rice Cooker Liner', 'Kimchi Container', 'Shopping Bags',
+  'Takeout Containers', 'Soy Candles'
+];
+
+// State
+let currentPage = 'dashboard';
+let pageHistory = ['dashboard'];
+let currentBranch = null;
+let logType = 'surplus';
+let logSelectedProduct = null;
+let transferSelectedItems = [];
+let currentTransferFilter = 'all';
+
+function getData(key) {
+  try { return JSON.parse(localStorage.getItem('kmt_' + key)) || []; }
+  catch { return []; }
+}
+function setData(key, val) { localStorage.setItem('kmt_' + key, JSON.stringify(val)); }
+
+// ===== NAVIGATION =====
+function navigate(page) {
+  pageHistory = [page];
+  showPage(page);
+  document.querySelectorAll('.nav-item').forEach((n, i) => {
+    const pages = ['dashboard', 'transfers', 'new-transfer', 'notifications'];
+    n.classList.toggle('active', pages[i] === page);
+  });
+}
+
+function showPage(page, pushHistory = true) {
+  if (pushHistory && currentPage !== page) pageHistory.push(page);
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById('page-' + page);
+  if (el) el.classList.add('active');
+
+  const backBtn = document.getElementById('backBtn');
+  backBtn.classList.toggle('visible', pageHistory.length > 1);
+
+  // Update header
+  const titles = {
+    'dashboard': ['Kimchi Mart Transfer Tracker', 'Inventory Transfer Management'],
+    'branch': [currentBranch ? getBranchName(currentBranch) : '', 'Branch Detail'],
+    'transfers': ['All Transfers', 'Transfer History'],
+    'new-transfer': ['New Transfer', 'Create Transfer Request'],
+    'transfer-detail': ['Transfer Detail', 'Tracking Information'],
+    'notifications': ['Alerts & Notifications', 'Surplus / Shortage Alerts'],
+  };
+  const t = titles[page] || ['', ''];
+  document.getElementById('headerTitle').textContent = t[0];
+  document.getElementById('headerSub').textContent = t[1];
+
+  // Render page content
+  if (page === 'dashboard') renderDashboard();
+  else if (page === 'branch') renderBranch();
+  else if (page === 'transfers') renderTransfers();
+  else if (page === 'new-transfer') renderNewTransfer();
+  else if (page === 'notifications') renderNotifications();
+}
+
+function goBack() {
+  if (pageHistory.length > 1) {
+    pageHistory.pop();
+    const prev = pageHistory[pageHistory.length - 1];
+    showPage(prev, false);
+  }
+}
+
+function getBranchName(id) { return (BRANCHES.find(b => b.id === id) || {}).name || id; }
+function getBranchColor(id) { return (BRANCHES.find(b => b.id === id) || {}).color || '#999'; }
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+  const transfers = getData('transfers');
+  const alerts = getData('alerts');
+  const active = transfers.filter(t => t.status !== 'delivered');
+  const delivered = transfers.filter(t => t.status === 'delivered');
+  const totalItems = transfers.reduce((s, t) => s + t.items.reduce((a, i) => a + i.qty, 0), 0);
+
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-card"><div class="stat-number blue">${transfers.length}</div><div class="stat-label">Total Transfers</div></div>
+    <div class="stat-card"><div class="stat-number orange">${active.length}</div><div class="stat-label">Active</div></div>
+    <div class="stat-card"><div class="stat-number green">${delivered.length}</div><div class="stat-label">Delivered</div></div>
+    <div class="stat-card"><div class="stat-number purple">${totalItems}</div><div class="stat-label">Items Moved</div></div>
+  `;
+
+  // Branch cards
+  let branchHTML = '';
+  BRANCHES.forEach(b => {
+    const bAlerts = alerts.filter(a => a.branch === b.id);
+    const bTransfers = transfers.filter(t => t.from === b.id || t.to === b.id);
+    const shortages = bAlerts.filter(a => a.type === 'shortage').length;
+    branchHTML += `
+      <div class="branch-card" style="border-left-color:${b.color}" onclick="openBranch('${b.id}')">
+        <div class="branch-name">${b.name}</div>
+        <div class="branch-stats">${bTransfers.length} transfers · ${bAlerts.length} alerts</div>
+        ${shortages > 0 ? `<div class="alert-badge">${shortages} shortage${shortages > 1 ? 's' : ''}</div>` : ''}
+      </div>`;
+  });
+  document.getElementById('branchGrid').innerHTML = branchHTML;
+
+  // Recent transfers
+  const recent = transfers.slice(-3).reverse();
+  document.getElementById('recentTransfers').innerHTML = recent.length
+    ? recent.map(renderTransferItem).join('')
+    : '<div class="empty-state"><div class="empty-icon">&#128666;</div><div class="empty-text">No transfers yet</div></div>';
+
+  // Active alerts
+  const activeAlerts = alerts.slice(-5).reverse();
+  document.getElementById('dashAlerts').innerHTML = activeAlerts.length
+    ? activeAlerts.map(renderAlertItem).join('')
+    : '<div class="empty-state"><div class="empty-icon">&#9989;</div><div class="empty-text">No active alerts</div></div>';
+
+  updateNotifCount();
+}
+
+function renderTransferItem(t) {
+  const statusClass = t.status === 'requested' ? 'status-requested' : t.status === 'in-transit' ? 'status-in-transit' : 'status-delivered';
+  const badgeClass = t.status === 'requested' ? 'badge-requested' : t.status === 'in-transit' ? 'badge-in-transit' : 'badge-delivered';
+  const label = t.status === 'in-transit' ? 'IN TRANSIT' : t.status.toUpperCase();
+  const itemCount = t.items.reduce((a, i) => a + i.qty, 0);
+  return `
+    <div class="transfer-item ${statusClass}" onclick="openTransferDetail('${t.id}')">
+      <div class="transfer-route">${getBranchName(t.from)} <span class="arrow">&#10132;</span> ${getBranchName(t.to)}</div>
+      <div class="transfer-items-summary">${t.items.length} product${t.items.length > 1 ? 's' : ''} · ${itemCount} total items</div>
+      <div class="transfer-meta">
+        <span>${formatDate(t.created)}</span>
+        <span class="transfer-status-badge ${badgeClass}">${label}</span>
+      </div>
+    </div>`;
+}
+
+function renderAlertItem(a) {
+  const icon = a.type === 'surplus' ? '&#9650;' : '&#9660;';
+  return `
+    <div class="alert-item" onclick="openBranch('${a.branch}')">
+      <div class="alert-icon ${a.type}">${icon}</div>
+      <div class="alert-info">
+        <div class="alert-product">${a.product}</div>
+        <div class="alert-detail">${getBranchName(a.branch)} · ${formatDate(a.created)}</div>
+      </div>
+      <div class="alert-qty ${a.type}-qty">${a.type === 'surplus' ? '+' : '-'}${a.qty}</div>
+    </div>`;
+}
+
+// ===== BRANCH DETAIL =====
+function openBranch(id) {
+  currentBranch = id;
+  showPage('branch');
+}
+
+function renderBranch() {
+  const alerts = getData('alerts').filter(a => a.branch === currentBranch);
+  const transfers = getData('transfers').filter(t => t.from === currentBranch || t.to === currentBranch);
+  const surplus = alerts.filter(a => a.type === 'surplus');
+  const shortage = alerts.filter(a => a.type === 'shortage');
+
+  document.getElementById('branchStats').innerHTML = `
+    <div class="stat-card"><div class="stat-number green">${surplus.length}</div><div class="stat-label">Surplus</div></div>
+    <div class="stat-card"><div class="stat-number red">${shortage.length}</div><div class="stat-label">Shortage</div></div>
+    <div class="stat-card"><div class="stat-number blue">${transfers.length}</div><div class="stat-label">Transfers</div></div>
+  `;
+
+  switchBranchTab('surplus', document.querySelector('#page-branch .tab'));
+}
+
+function switchBranchTab(tab, el) {
+  document.querySelectorAll('#page-branch .tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  const alerts = getData('alerts').filter(a => a.branch === currentBranch);
+  const container = document.getElementById('branchTabContent');
+
+  if (tab === 'surplus' || tab === 'shortage') {
+    const items = alerts.filter(a => a.type === tab);
+    if (!items.length) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon">${tab === 'surplus' ? '&#128230;' : '&#128269;'}</div><div class="empty-text">No ${tab} items logged</div></div>`;
+      return;
+    }
+    container.innerHTML = items.map(a => `
+      <div class="alert-item">
+        <div class="alert-icon ${a.type}">${a.type === 'surplus' ? '&#9650;' : '&#9660;'}</div>
+        <div class="alert-info">
+          <div class="alert-product">${a.product}</div>
+          <div class="alert-detail">${formatDate(a.created)}${a.notes ? ' · ' + a.notes : ''}</div>
+        </div>
+        <div class="alert-qty ${a.type}-qty">${a.type === 'surplus' ? '+' : '-'}${a.qty}</div>
+      </div>`).join('');
+  } else {
+    const transfers = getData('transfers').filter(t => t.from === currentBranch || t.to === currentBranch);
+    if (!transfers.length) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128666;</div><div class="empty-text">No transfer history</div></div>';
+      return;
+    }
+    container.innerHTML = transfers.reverse().map(renderTransferItem).join('');
+  }
+}
+
+// ===== LOG SURPLUS/SHORTAGE =====
+function openLogItemModal(type) {
+  logType = type;
+  logSelectedProduct = null;
+  document.getElementById('logModalTitle').textContent = type === 'surplus' ? 'Log Surplus Item' : 'Log Shortage Item';
+  document.getElementById('logSearch').value = '';
+  document.getElementById('logQty').value = '';
+  document.getElementById('logNotes').value = '';
+  document.getElementById('logModal').classList.add('visible');
+  filterLogProducts();
+}
+
+function closeLogModal() {
+  document.getElementById('logModal').classList.remove('visible');
+}
+
+function filterLogProducts() {
+  const q = document.getElementById('logSearch').value.toLowerCase();
+  const filtered = PRODUCTS.filter(p => p.toLowerCase().includes(q));
+  document.getElementById('logProductList').innerHTML = filtered.slice(0, 20).map(p => `
+    <div class="item-row" onclick="selectLogProduct('${p.replace(/'/g, "\\'")}')" style="cursor:pointer;${logSelectedProduct === p ? 'background:#E3F2FD;border-radius:8px;padding:8px;' : ''}">
+      <div class="item-name">${p}</div>
+    </div>`).join('');
+}
+
+function selectLogProduct(p) {
+  logSelectedProduct = p;
+  filterLogProducts();
+}
+
+function submitLogItem() {
+  if (!logSelectedProduct) return alert('Please select a product');
+  const qty = parseInt(document.getElementById('logQty').value);
+  if (!qty || qty < 1) return alert('Please enter a valid quantity');
+
+  const alerts = getData('alerts');
+  alerts.push({
+    id: 'a' + Date.now(),
+    branch: currentBranch,
+    type: logType,
+    product: logSelectedProduct,
+    qty: qty,
+    notes: document.getElementById('logNotes').value,
+    created: new Date().toISOString(),
+  });
+  setData('alerts', alerts);
+  closeLogModal();
+  renderBranch();
+  updateNotifCount();
+}
+
+// ===== TRANSFERS LIST =====
+function renderTransfers() {
+  const transfers = getData('transfers');
+  filterTransfers(currentTransferFilter, document.querySelector('#page-transfers .tab.active'));
+}
+
+function filterTransfers(status, el) {
+  currentTransferFilter = status;
+  document.querySelectorAll('#page-transfers .tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  let transfers = getData('transfers');
+  if (status !== 'all') transfers = transfers.filter(t => t.status === status);
+  transfers = transfers.reverse();
+
+  document.getElementById('transfersList').innerHTML = transfers.length
+    ? transfers.map(renderTransferItem).join('')
+    : '<div class="empty-state"><div class="empty-icon">&#128666;</div><div class="empty-text">No transfers found</div></div>';
+}
+
+// ===== TRANSFER DETAIL =====
+function openTransferDetail(id) {
+  const t = getData('transfers').find(x => x.id === id);
+  if (!t) return;
+
+  showPage('transfer-detail');
+
+  document.getElementById('transferDetailCard').innerHTML = `
+    <div class="transfer-route" style="font-size:1.1rem;margin-bottom:8px">
+      ${getBranchName(t.from)} <span class="arrow" style="color:#1565C0">&#10132;</span> ${getBranchName(t.to)}
+    </div>
+    <div style="font-size:0.75rem;color:#888;margin-bottom:4px">Created: ${formatDate(t.created)}</div>
+    <div style="font-size:0.75rem;color:#888;margin-bottom:8px">Transfer ID: ${t.id}</div>
+    ${t.notes ? `<div style="font-size:0.8rem;color:#555;padding:8px;background:#f5f5f5;border-radius:8px">${t.notes}</div>` : ''}
+  `;
+
+  document.getElementById('transferDetailItems').innerHTML = t.items.map(i => `
+    <div class="alert-item">
+      <div class="alert-info">
+        <div class="alert-product">${i.name}</div>
+      </div>
+      <div class="alert-qty" style="color:#1565C0">x${i.qty}</div>
+    </div>`).join('');
+
+  // Timeline
+  let timeline = `
+    <div class="timeline-item">
+      <div class="timeline-dot done"></div>
+      <div class="timeline-info">
+        <div class="tl-title">Transfer Requested</div>
+        <div class="tl-time">${formatDate(t.created)}</div>
+      </div>
+    </div>`;
+
+  if (t.status === 'in-transit' || t.status === 'delivered') {
+    timeline += `
+      <div class="timeline-item">
+        <div class="timeline-dot done"></div>
+        <div class="timeline-info">
+          <div class="tl-title">Loaded on Van — In Transit</div>
+          <div class="tl-time">${t.transitDate ? formatDate(t.transitDate) : ''}</div>
+        </div>
+      </div>`;
+  } else {
+    timeline += `
+      <div class="timeline-item">
+        <div class="timeline-dot pending"></div>
+        <div class="timeline-info"><div class="tl-title">Awaiting Pickup</div></div>
+      </div>`;
+  }
+
+  if (t.status === 'delivered') {
+    timeline += `
+      <div class="timeline-item">
+        <div class="timeline-dot done"></div>
+        <div class="timeline-info">
+          <div class="tl-title">Delivered & Confirmed</div>
+          <div class="tl-time">${t.deliverDate ? formatDate(t.deliverDate) : ''}</div>
+        </div>
+      </div>`;
+  } else {
+    timeline += `
+      <div class="timeline-item">
+        <div class="timeline-dot pending"></div>
+        <div class="timeline-info"><div class="tl-title">Pending Delivery</div></div>
+      </div>`;
+  }
+
+  document.getElementById('transferTimeline').innerHTML = timeline;
+
+  // Action buttons
+  let actions = '';
+  if (t.status === 'requested') {
+    actions = `<button class="btn btn-primary" onclick="updateTransferStatus('${t.id}', 'in-transit')">&#128666; Mark as In Transit</button>`;
+  } else if (t.status === 'in-transit') {
+    actions = `<button class="btn btn-success" onclick="updateTransferStatus('${t.id}', 'delivered')">&#9989; Confirm Delivery</button>`;
+  } else {
+    actions = `<div style="text-align:center;color:#4CAF50;font-weight:600;font-size:0.9rem;padding:12px">&#9989; Transfer Complete</div>`;
+  }
+  document.getElementById('transferActions').innerHTML = actions;
+}
+
+function updateTransferStatus(id, newStatus) {
+  const transfers = getData('transfers');
+  const t = transfers.find(x => x.id === id);
+  if (!t) return;
+  t.status = newStatus;
+  if (newStatus === 'in-transit') t.transitDate = new Date().toISOString();
+  if (newStatus === 'delivered') t.deliverDate = new Date().toISOString();
+  setData('transfers', transfers);
+  openTransferDetail(id);
+}
+
+// ===== NEW TRANSFER =====
+function renderNewTransfer() {
+  transferSelectedItems = [];
+  const options = BRANCHES.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+  document.getElementById('tfFrom').innerHTML = `<option value="">Select branch...</option>` + options;
+  document.getElementById('tfTo').innerHTML = `<option value="">Select branch...</option>` + options;
+  document.getElementById('tfNotes').value = '';
+  document.getElementById('itemSearch').value = '';
+  renderSelectedItems();
+  filterProductList();
+}
+
+function filterProductList() {
+  const q = document.getElementById('itemSearch').value.toLowerCase();
+  const filtered = PRODUCTS.filter(p => p.toLowerCase().includes(q));
+  const selected = transferSelectedItems.map(i => i.name);
+  document.getElementById('productPicker').innerHTML = filtered.slice(0, 15).map(p => {
+    const added = selected.includes(p);
+    return `
+      <div class="item-row" style="cursor:pointer;${added ? 'opacity:0.4' : ''}" onclick="${added ? '' : `addTransferItem('${p.replace(/'/g, "\\'")}')`}">
+        <div class="item-name">${p}</div>
+        <div style="font-size:0.7rem;color:${added ? '#4CAF50' : '#1565C0'}">${added ? 'Added' : '+ Add'}</div>
+      </div>`;
+  }).join('');
+}
+
+function addTransferItem(name) {
+  if (transferSelectedItems.find(i => i.name === name)) return;
+  transferSelectedItems.push({ name, qty: 1 });
+  renderSelectedItems();
+  filterProductList();
+}
+
+function removeTransferItem(idx) {
+  transferSelectedItems.splice(idx, 1);
+  renderSelectedItems();
+  filterProductList();
+}
+
+function updateItemQty(idx, delta) {
+  transferSelectedItems[idx].qty = Math.max(1, transferSelectedItems[idx].qty + delta);
+  renderSelectedItems();
+}
+
+function setItemQty(idx, val) {
+  transferSelectedItems[idx].qty = Math.max(1, parseInt(val) || 1);
+}
+
+function renderSelectedItems() {
+  document.getElementById('selectedCount').textContent = transferSelectedItems.length;
+  if (!transferSelectedItems.length) {
+    document.getElementById('selectedItems').innerHTML = '<div style="font-size:0.75rem;color:#999;padding:10px;text-align:center">No items selected</div>';
+    return;
+  }
+  document.getElementById('selectedItems').innerHTML = transferSelectedItems.map((item, i) => `
+    <div class="item-row">
+      <div class="item-name">${item.name}</div>
+      <div class="item-qty-control">
+        <button class="qty-btn" onclick="updateItemQty(${i}, -1)">-</button>
+        <input type="number" class="qty-input" value="${item.qty}" onchange="setItemQty(${i}, this.value)" min="1">
+        <button class="qty-btn" onclick="updateItemQty(${i}, 1)">+</button>
+      </div>
+      <button class="item-remove" onclick="removeTransferItem(${i})">&#10005;</button>
+    </div>`).join('');
+}
+
+function submitTransfer() {
+  const from = document.getElementById('tfFrom').value;
+  const to = document.getElementById('tfTo').value;
+  if (!from) return alert('Please select a From branch');
+  if (!to) return alert('Please select a To branch');
+  if (from === to) return alert('From and To branches must be different');
+  if (!transferSelectedItems.length) return alert('Please add at least one item');
+
+  const transfers = getData('transfers');
+  const transfer = {
+    id: 'T' + Date.now(),
+    from, to,
+    items: transferSelectedItems.map(i => ({ ...i })),
+    status: 'requested',
+    notes: document.getElementById('tfNotes').value,
+    created: new Date().toISOString(),
+  };
+  transfers.push(transfer);
+  setData('transfers', transfers);
+
+  // Auto-create notification
+  const alerts = getData('alerts');
+  alerts.push({
+    id: 'n' + Date.now(),
+    branch: to,
+    type: 'shortage',
+    product: `Transfer incoming: ${transferSelectedItems.length} products from ${getBranchName(from)}`,
+    qty: transferSelectedItems.reduce((a, i) => a + i.qty, 0),
+    notes: 'Auto-generated from transfer request',
+    created: new Date().toISOString(),
+    isTransferNotif: true,
+  });
+  setData('alerts', alerts);
+
+  navigate('transfers');
+}
+
+// ===== NOTIFICATIONS =====
+function renderNotifications() {
+  filterNotifs('all', document.querySelector('#page-notifications .tab.active'));
+}
+
+function filterNotifs(filter, el) {
+  document.querySelectorAll('#page-notifications .tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  let alerts = getData('alerts');
+  if (filter !== 'all') alerts = alerts.filter(a => a.type === filter);
+  alerts = alerts.reverse();
+
+  document.getElementById('notifList').innerHTML = alerts.length
+    ? alerts.map(renderAlertItem).join('')
+    : '<div class="empty-state"><div class="empty-icon">&#128276;</div><div class="empty-text">No alerts</div></div>';
+}
+
+function updateNotifCount() {
+  const alerts = getData('alerts');
+  const count = alerts.filter(a => a.type === 'shortage').length;
+  document.getElementById('notifCount').textContent = count;
+  document.getElementById('notifCount').style.display = count > 0 ? 'flex' : 'none';
+}
+
+// ===== UTILS =====
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const year = String(d.getFullYear()).slice(-2);
+  const h = d.getHours();
+  const m = String(d.getMinutes()).padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${month}/${day}/${year} ${h12}:${m} ${ampm}`;
+}
+
+// ===== INIT =====
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+renderDashboard();
+</script>
+</body>
+</html>
