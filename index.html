@@ -257,9 +257,31 @@ body { padding-bottom: 65px; }
 .timeline-info { flex: 1; }
 .timeline-info .tl-title { font-size: 0.8rem; font-weight: 600; }
 .timeline-info .tl-time { font-size: 0.65rem; color: #999; }
+
+/* ===== LOADING STATE ===== */
+.loading-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: #f5f5f5; z-index: 300; display: flex;
+  align-items: center; justify-content: center; flex-direction: column;
+}
+.loading-overlay .spinner {
+  width: 40px; height: 40px; border: 4px solid #e0e0e0;
+  border-top-color: #1565C0; border-radius: 50%;
+  animation: spin 0.8s linear infinite; margin-bottom: 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-overlay .loading-text {
+  font-size: 0.9rem; color: #666; font-weight: 500;
+}
 </style>
 </head>
 <body>
+
+<!-- ===== LOADING OVERLAY ===== -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Connecting to database...</div>
+</div>
 
 <!-- ===== HEADER ===== -->
 <div class="header">
@@ -415,8 +437,26 @@ body { padding-bottom: 65px; }
   </button>
 </div>
 
+<!-- ===== FIREBASE SDK ===== -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
 <script>
-// ===== DATA STORE (localStorage) =====
+// ===== FIREBASE INIT =====
+const firebaseConfig = {
+  apiKey: "AIzaSyBDfYvTu8WTVT8JfQ79_K-5oDr6RRU841s",
+  authDomain: "k-culture-group.firebaseapp.com",
+  projectId: "k-culture-group",
+  storageBucket: "k-culture-group.firebasestorage.app",
+  messagingSenderId: "238572565868",
+  appId: "1:238572565868:web:749c4471302094e0f12f49",
+  measurementId: "G-HT8X1BYZMV"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ===== DATA =====
 const BRANCHES = [
   { id: 'miami', name: 'Miami', color: '#4CAF50' },
   { id: 'pembroke', name: 'Pembroke Pines', color: '#2196F3' },
@@ -462,7 +502,7 @@ const PRODUCTS = [
   'Takeout Containers', 'Soy Candles'
 ];
 
-// State
+// ===== STATE =====
 let currentPage = 'dashboard';
 let pageHistory = ['dashboard'];
 let currentBranch = null;
@@ -471,11 +511,48 @@ let logSelectedProduct = null;
 let transferSelectedItems = [];
 let currentTransferFilter = 'all';
 
-function getData(key) {
-  try { return JSON.parse(localStorage.getItem('kmt_' + key)) || []; }
-  catch { return []; }
+// Global arrays populated by real-time listeners
+let allTransfers = [];
+let allAlerts = [];
+let transfersLoaded = false;
+let alertsLoaded = false;
+
+// ===== REAL-TIME LISTENERS =====
+db.collection('kmt_transfers').orderBy('created').onSnapshot(snapshot => {
+  allTransfers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  transfersLoaded = true;
+  hideLoadingIfReady();
+  rerenderCurrentPage();
+});
+
+db.collection('kmt_alerts').orderBy('created').onSnapshot(snapshot => {
+  allAlerts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  alertsLoaded = true;
+  hideLoadingIfReady();
+  rerenderCurrentPage();
+});
+
+function hideLoadingIfReady() {
+  if (transfersLoaded && alertsLoaded) {
+    document.getElementById('loadingOverlay').style.display = 'none';
+  }
 }
-function setData(key, val) { localStorage.setItem('kmt_' + key, JSON.stringify(val)); }
+
+function rerenderCurrentPage() {
+  if (!transfersLoaded || !alertsLoaded) return;
+  if (currentPage === 'dashboard') renderDashboard();
+  else if (currentPage === 'branch') renderBranch();
+  else if (currentPage === 'transfers') renderTransfers();
+  else if (currentPage === 'notifications') renderNotifications();
+  else if (currentPage === 'transfer-detail') {
+    // Re-render if we're viewing a transfer detail
+    const card = document.getElementById('transferDetailCard');
+    if (card && card.dataset.transferId) {
+      openTransferDetail(card.dataset.transferId, false);
+    }
+  }
+  updateNotifCount();
+}
 
 // ===== NAVIGATION =====
 function navigate(page) {
@@ -531,8 +608,8 @@ function getBranchColor(id) { return (BRANCHES.find(b => b.id === id) || {}).col
 
 // ===== DASHBOARD =====
 function renderDashboard() {
-  const transfers = getData('transfers');
-  const alerts = getData('alerts');
+  const transfers = allTransfers;
+  const alerts = allAlerts;
   const active = transfers.filter(t => t.status !== 'delivered');
   const delivered = transfers.filter(t => t.status === 'delivered');
   const totalItems = transfers.reduce((s, t) => s + t.items.reduce((a, i) => a + i.qty, 0), 0);
@@ -610,8 +687,8 @@ function openBranch(id) {
 }
 
 function renderBranch() {
-  const alerts = getData('alerts').filter(a => a.branch === currentBranch);
-  const transfers = getData('transfers').filter(t => t.from === currentBranch || t.to === currentBranch);
+  const alerts = allAlerts.filter(a => a.branch === currentBranch);
+  const transfers = allTransfers.filter(t => t.from === currentBranch || t.to === currentBranch);
   const surplus = alerts.filter(a => a.type === 'surplus');
   const shortage = alerts.filter(a => a.type === 'shortage');
 
@@ -628,7 +705,7 @@ function switchBranchTab(tab, el) {
   document.querySelectorAll('#page-branch .tab').forEach(t => t.classList.remove('active'));
   if (el) el.classList.add('active');
 
-  const alerts = getData('alerts').filter(a => a.branch === currentBranch);
+  const alerts = allAlerts.filter(a => a.branch === currentBranch);
   const container = document.getElementById('branchTabContent');
 
   if (tab === 'surplus' || tab === 'shortage') {
@@ -647,12 +724,12 @@ function switchBranchTab(tab, el) {
         <div class="alert-qty ${a.type}-qty">${a.type === 'surplus' ? '+' : '-'}${a.qty}</div>
       </div>`).join('');
   } else {
-    const transfers = getData('transfers').filter(t => t.from === currentBranch || t.to === currentBranch);
+    const transfers = allTransfers.filter(t => t.from === currentBranch || t.to === currentBranch);
     if (!transfers.length) {
       container.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128666;</div><div class="empty-text">No transfer history</div></div>';
       return;
     }
-    container.innerHTML = transfers.reverse().map(renderTransferItem).join('');
+    container.innerHTML = [...transfers].reverse().map(renderTransferItem).join('');
   }
 }
 
@@ -701,9 +778,7 @@ function submitLogItem() {
   const qty = parseInt(document.getElementById('logQty').value);
   if (!qty || qty < 1) return alert('Please enter a valid quantity');
 
-  const alerts = getData('alerts');
-  alerts.push({
-    id: 'a' + Date.now(),
+  db.collection('kmt_alerts').add({
     branch: currentBranch,
     type: logType,
     product: logSelectedProduct,
@@ -711,15 +786,13 @@ function submitLogItem() {
     notes: document.getElementById('logNotes').value,
     created: new Date().toISOString(),
   });
-  setData('alerts', alerts);
+
   closeLogModal();
-  renderBranch();
-  updateNotifCount();
+  // No need to manually re-render — onSnapshot will handle it
 }
 
 // ===== TRANSFERS LIST =====
 function renderTransfers() {
-  const transfers = getData('transfers');
   filterTransfers(currentTransferFilter, document.querySelector('#page-transfers .tab.active'));
 }
 
@@ -728,7 +801,7 @@ function filterTransfers(status, el) {
   document.querySelectorAll('#page-transfers .tab').forEach(t => t.classList.remove('active'));
   if (el) el.classList.add('active');
 
-  let transfers = getData('transfers');
+  let transfers = [...allTransfers];
   if (status !== 'all') transfers = transfers.filter(t => t.status === status);
   transfers = transfers.reverse();
 
@@ -738,13 +811,17 @@ function filterTransfers(status, el) {
 }
 
 // ===== TRANSFER DETAIL =====
-function openTransferDetail(id) {
-  const t = getData('transfers').find(x => x.id === id);
+function openTransferDetail(id, pushHistory = true) {
+  const t = allTransfers.find(x => x.id === id);
   if (!t) return;
 
-  showPage('transfer-detail');
+  if (pushHistory) showPage('transfer-detail');
 
-  document.getElementById('transferDetailCard').innerHTML = `
+  // Store transfer ID for re-rendering on snapshot updates
+  const detailCard = document.getElementById('transferDetailCard');
+  detailCard.dataset.transferId = id;
+
+  detailCard.innerHTML = `
     <div class="transfer-route" style="font-size:1.1rem;margin-bottom:8px">
       ${getBranchName(t.from)} <span class="arrow" style="color:#1565C0">&#10132;</span> ${getBranchName(t.to)}
     </div>
@@ -820,14 +897,12 @@ function openTransferDetail(id) {
 }
 
 function updateTransferStatus(id, newStatus) {
-  const transfers = getData('transfers');
-  const t = transfers.find(x => x.id === id);
-  if (!t) return;
-  t.status = newStatus;
-  if (newStatus === 'in-transit') t.transitDate = new Date().toISOString();
-  if (newStatus === 'delivered') t.deliverDate = new Date().toISOString();
-  setData('transfers', transfers);
-  openTransferDetail(id);
+  const updateData = { status: newStatus };
+  if (newStatus === 'in-transit') updateData.transitDate = new Date().toISOString();
+  if (newStatus === 'delivered') updateData.deliverDate = new Date().toISOString();
+
+  db.collection('kmt_transfers').doc(id).update(updateData);
+  // onSnapshot will re-render automatically
 }
 
 // ===== NEW TRANSFER =====
@@ -915,31 +990,26 @@ function submitTransfer() {
   if (from === to) return alert('From and To branches must be different');
   if (!transferSelectedItems.length) return alert('Please add at least one item');
 
-  const transfers = getData('transfers');
-  const transfer = {
-    id: 'T' + Date.now(),
+  const now = new Date().toISOString();
+
+  db.collection('kmt_transfers').add({
     from, to,
-    items: transferSelectedItems.map(i => ({ ...i })),
+    items: transferSelectedItems.map(i => ({ name: i.name, qty: i.qty })),
     status: 'requested',
     notes: document.getElementById('tfNotes').value,
-    created: new Date().toISOString(),
-  };
-  transfers.push(transfer);
-  setData('transfers', transfers);
+    created: now,
+  });
 
   // Auto-create notification
-  const alerts = getData('alerts');
-  alerts.push({
-    id: 'n' + Date.now(),
+  db.collection('kmt_alerts').add({
     branch: to,
     type: 'shortage',
     product: `Transfer incoming: ${transferSelectedItems.length} products from ${getBranchName(from)}`,
     qty: transferSelectedItems.reduce((a, i) => a + i.qty, 0),
     notes: 'Auto-generated from transfer request',
-    created: new Date().toISOString(),
+    created: now,
     isTransferNotif: true,
   });
-  setData('alerts', alerts);
 
   navigate('transfers');
 }
@@ -953,7 +1023,7 @@ function filterNotifs(filter, el) {
   document.querySelectorAll('#page-notifications .tab').forEach(t => t.classList.remove('active'));
   if (el) el.classList.add('active');
 
-  let alerts = getData('alerts');
+  let alerts = [...allAlerts];
   if (filter !== 'all') alerts = alerts.filter(a => a.type === filter);
   alerts = alerts.reverse();
 
@@ -963,8 +1033,7 @@ function filterNotifs(filter, el) {
 }
 
 function updateNotifCount() {
-  const alerts = getData('alerts');
-  const count = alerts.filter(a => a.type === 'shortage').length;
+  const count = allAlerts.filter(a => a.type === 'shortage').length;
   document.getElementById('notifCount').textContent = count;
   document.getElementById('notifCount').style.display = count > 0 ? 'flex' : 'none';
 }
@@ -987,7 +1056,6 @@ function formatDate(iso) {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
-renderDashboard();
 </script>
 </body>
 </html>
