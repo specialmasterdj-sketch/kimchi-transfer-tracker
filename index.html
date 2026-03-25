@@ -673,12 +673,22 @@ function closeLogModal() {
 }
 
 function filterLogProducts() {
-  const q = document.getElementById('logSearch').value.toLowerCase();
-  const filtered = PRODUCTS.filter(p => p.toLowerCase().includes(q));
-  document.getElementById('logProductList').innerHTML = filtered.slice(0, 20).map(p => `
+  const q = document.getElementById('logSearch').value.trim();
+  const qLower = q.toLowerCase();
+  const filtered = PRODUCTS.filter(p => p.toLowerCase().includes(qLower));
+  let html = '';
+  // Show "Add custom" option when user types something not in the list
+  if (q && !PRODUCTS.some(p => p.toLowerCase() === qLower)) {
+    const isSelected = logSelectedProduct === q;
+    html += `<div class="item-row" onclick="selectLogProduct('${q.replace(/'/g, "\\'")}')" style="cursor:pointer;${isSelected ? 'background:#E3F2FD;border-radius:8px;padding:8px;' : ''}">
+      <div class="item-name" style="color:#1565C0;font-weight:600">+ Add "${q}"</div>
+    </div>`;
+  }
+  html += filtered.slice(0, 20).map(p => `
     <div class="item-row" onclick="selectLogProduct('${p.replace(/'/g, "\\'")}')" style="cursor:pointer;${logSelectedProduct === p ? 'background:#E3F2FD;border-radius:8px;padding:8px;' : ''}">
       <div class="item-name">${p}</div>
     </div>`).join('');
+  document.getElementById('logProductList').innerHTML = html;
 }
 
 function selectLogProduct(p) {
@@ -833,10 +843,20 @@ function renderNewTransfer() {
 }
 
 function filterProductList() {
-  const q = document.getElementById('itemSearch').value.toLowerCase();
-  const filtered = PRODUCTS.filter(p => p.toLowerCase().includes(q));
+  const q = document.getElementById('itemSearch').value.trim();
+  const qLower = q.toLowerCase();
+  const filtered = PRODUCTS.filter(p => p.toLowerCase().includes(qLower));
   const selected = transferSelectedItems.map(i => i.name);
-  document.getElementById('productPicker').innerHTML = filtered.slice(0, 15).map(p => {
+  let html = '';
+  // Show "Add custom" option when user types something not in the list
+  if (q && !PRODUCTS.some(p => p.toLowerCase() === qLower)) {
+    const added = selected.includes(q);
+    html += `<div class="item-row" style="cursor:pointer;${added ? 'opacity:0.4' : ''}" onclick="${added ? '' : `addTransferItem('${q.replace(/'/g, "\\'")}')`}">
+      <div class="item-name" style="color:#1565C0;font-weight:600">+ Add "${q}"</div>
+      <div style="font-size:0.7rem;color:${added ? '#4CAF50' : '#1565C0'}">${added ? 'Added' : 'Custom'}</div>
+    </div>`;
+  }
+  html += filtered.slice(0, 15).map(p => {
     const added = selected.includes(p);
     return `
       <div class="item-row" style="cursor:pointer;${added ? 'opacity:0.4' : ''}" onclick="${added ? '' : `addTransferItem('${p.replace(/'/g, "\\'")}')`}">
@@ -844,6 +864,7 @@ function filterProductList() {
         <div style="font-size:0.7rem;color:${added ? '#4CAF50' : '#1565C0'}">${added ? 'Added' : '+ Add'}</div>
       </div>`;
   }).join('');
+  document.getElementById('productPicker').innerHTML = html;
 }
 
 function addTransferItem(name) {
